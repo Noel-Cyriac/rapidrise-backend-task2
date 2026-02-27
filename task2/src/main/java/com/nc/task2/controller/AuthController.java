@@ -50,24 +50,23 @@ public class AuthController {
     // ---------------- Login ----------------
     @PostMapping("/login")
     public Map<String, String> login(@RequestBody Map<String, String> req) {
+
         User user = userRepository.findByUsername(req.get("username"))
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
         if (!passwordEncoder.matches(req.get("password"), user.getPassword()))
             throw new RuntimeException("Invalid credentials");
-
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
 
+        // (delete old refresh token for this user)
+        refreshTokenRepository.deleteByUser(user);
         RefreshToken tokenEntity = new RefreshToken();
         tokenEntity.setToken(refreshToken);
         tokenEntity.setUser(user);
         tokenEntity.setExpiryDate(Instant.now().plusMillis(604800000)); // 7 days
         refreshTokenRepository.save(tokenEntity);
-
         return Map.of("accessToken", accessToken, "refreshToken", refreshToken);
     }
-
     // ---------------- Refresh ----------------
     @PostMapping("/refresh")
     public Map<String, String> refresh(@RequestBody Map<String, String> req) {
