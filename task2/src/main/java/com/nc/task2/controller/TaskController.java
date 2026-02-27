@@ -1,5 +1,6 @@
 package com.nc.task2.controller;
 
+import com.nc.task2.dto.TaskResponse;
 import com.nc.task2.entity.Task;
 import com.nc.task2.entity.User;
 import com.nc.task2.repository.TaskRepository;
@@ -26,10 +27,12 @@ public class TaskController {
     }
 
     @GetMapping
-    public List<Task> getAll(@AuthenticationPrincipal User user){
-        return taskRepository.findByUser(user);
+    public List<TaskResponse> getAll(@AuthenticationPrincipal User user) {
+        return taskRepository.findByUser(user)
+                .stream()
+                .map(TaskResponse::new)  // map each Task to TaskResponse
+                .toList();
     }
-
     @PutMapping("/{id}")
     public Task update(@PathVariable Long id, @RequestBody Task updated){
         Task task = taskRepository.findById(id).orElseThrow();
