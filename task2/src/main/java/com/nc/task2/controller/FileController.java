@@ -1,5 +1,6 @@
 package com.nc.task2.controller;
 
+import com.nc.task2.dto.FileResponse;
 import com.nc.task2.entity.FileEntity;
 import com.nc.task2.entity.User;
 import com.nc.task2.repository.FileRepository;
@@ -61,8 +62,18 @@ public class FileController {
 
     // ---------------- LIST ----------------
     @GetMapping("/list")
-    public List<FileEntity> listFiles(@AuthenticationPrincipal User user) {
-        return fileRepository.findByUser(user);
+    public List<FileResponse> listFiles(@AuthenticationPrincipal User user) {
+        return fileRepository.findByUser(user)
+                .stream()
+                .map(f -> new FileResponse(
+                        f.getId(),
+                        f.getFileName(),
+                        f.getFilePath(),
+                        f.getFileType(),
+                        f.getUploadTime(),
+                        f.getUser().getId() // only user id
+                ))
+                .toList();
     }
 
     // ---------------- DOWNLOAD ----------------
