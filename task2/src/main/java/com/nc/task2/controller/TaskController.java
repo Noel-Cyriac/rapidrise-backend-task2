@@ -3,11 +3,9 @@ package com.nc.task2.controller;
 import com.nc.task2.dto.TaskResponse;
 import com.nc.task2.entity.Task;
 import com.nc.task2.entity.User;
-import com.nc.task2.repository.TaskRepository;
+import com.nc.task2.service.TaskService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,47 +16,37 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TaskController {
 
-    private final TaskRepository taskRepository;
+    private final TaskService taskService;
 
     @PostMapping
-    public Task create(@RequestBody Task task, @AuthenticationPrincipal User user){
-        task.setUser(user);
-        return taskRepository.save(task);
+    public TaskResponse create(
+            @RequestBody Task task,
+            @AuthenticationPrincipal User user
+    ) {
+        return taskService.create(task, user);
     }
 
     @GetMapping
-    public List<TaskResponse> getAll(@AuthenticationPrincipal User user) {
-        return taskRepository.findByUser(user)
-                .stream()
-                .map(TaskResponse::new)  // map each Task to TaskResponse
-                .toList();
+    public List<TaskResponse> getAll(
+            @AuthenticationPrincipal User user
+    ) {
+        return taskService.getAll(user);
     }
+
     @PutMapping("/{id}")
-    public Task update(@PathVariable Long id, @RequestBody Task updated){
-        Task task = taskRepository.findById(id).orElseThrow();
-        task.setTitle(updated.getTitle());
-        task.setDescription(updated.getDescription());
-        task.setCompleted(updated.isCompleted());
-        return taskRepository.save(task);
+    public TaskResponse update(
+            @PathVariable Long id,
+            @RequestBody Task updated,
+            @AuthenticationPrincipal User user
+    ) {
+        return taskService.update(id, updated, user);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteTask(
+    public ResponseEntity<String> deleteTask(
             @PathVariable Long id,
-            Authentication authentication
+            @AuthenticationPrincipal User user
     ) {
-        User user = (User) authentication.getPrincipal();
-
-        Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
-
-        if (!task.getUser().getId().equals(user.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("You cannot delete this task");
-        }
-
-        taskRepository.delete(task);
-
-        return ResponseEntity.ok("Task deleted successfully");
+        return ResponseEntity.ok(taskService.delete(id, user));
     }
 }

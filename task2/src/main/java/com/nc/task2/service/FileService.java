@@ -1,8 +1,10 @@
 package com.nc.task2.service;
 
+import com.nc.task2.dto.FileResponse;
 import com.nc.task2.entity.FileEntity;
 import com.nc.task2.entity.User;
 import com.nc.task2.repository.FileRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,25 +12,92 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class FileService {
-    private final FileRepository fileRepository;
-    private final String uploadDir = "uploads/";
 
-    public void store(MultipartFile file, User user) throws IOException {
-        File dir = new File(uploadDir); if(!dir.exists()) dir.mkdir();
-        String filename = UUID.randomUUID()+"_"+file.getOriginalFilename();
-        Path path = Paths.get(uploadDir + filename);
-        Files.copy(file.getInputStream(), path);
-        FileEntity entity = new FileEntity();
-        entity.setFileName(filename);
-        entity.setFilePath(path.toString());
-        entity.setUser(user);
-        fileRepository.save(entity);
+    private final FileRepository fileRepository;
+
+    private final String uploadDir = System.getProperty("user.dir") + "/uploads";
+
+    // ---------------- UPLOAD ----------------
+    @Transactional
+    public String uploadFile(MultipartFile file, User user) throws IOException {
+
+        String originalName = file.getOriginalFilename();
+
+        if (originalName == null || !originalName.matches(".*\\.(pdf|png|jpg)$")) {
+            throw new RuntimeException("Only PDF, PNG, JPG files are allowed.");
+        }
+
+        Files.createDirectories(Paths.get(uploadDir));
+
+        String uniqueName = UUID.randomUUID() + "_" + originalName;
+        String filePath = uploadDir + "/" + uniqueName;
+
+        file.transferTo(new File(filePath));
+
+        FileEntity fileEntity = new FileEntity();
+        fileEntity.setFileName(originalName);
+        fileEntity.setFileType(file.getContentType());
+        fileEntity.setFilePath(filePath);
+        fileEntity.setUploadTime(Instant.now());
+        fileEntity.setUser(user);
+
+        fileRepository.save(fileEntity);
+
+        return "File uploaded successfully: " + uniqueName;
+    }
+
+    // ---------------- LIST ----------------
+    public List<FileResponse> listFiles(User user) {
+
+        return fileRepository.findByUser(user)
+                .stream()
+                .map(f -> new FileResponse(
+                        f.getId(),
+                        f.getFileName(),
+                        f.getFilePath(),
+                        f.getFileType(),
+                        f.getUploadTime(),
+                        f.getUser().getId()
+                ))
+                .toList();
+    }
+
+    // ---------------- DOWNLOAD ----------------
+    public FileEntity getFileForDownload(Long id, User user) {
+
+        FileEntity file = fileRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File not found"));
+
+        if (!file.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Not allowed to access this file");
+        }
+
+        return file;
+    }
+
+    // ---------------- DELETE ----------------
+    @Transactional
+    public String deleteFile(Long id, User user) throws IOException {
+
+        FileEntity file = fileRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File not found"));
+
+        if (!file.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Not allowed to delete this file");
+        }
+
+        Files.deleteIfExists(Paths.get(file.getFilePath()));
+
+        fileRepository.delete(file);
+
+        return "File deleted successfully";
     }
 }
