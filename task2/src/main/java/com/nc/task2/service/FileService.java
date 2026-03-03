@@ -23,7 +23,7 @@ public class FileService {
 
     private final FileRepository fileRepository;
 
-    private final String uploadDir = System.getProperty("user.dir") + "/uploads";
+    private final String uploadDir = System.getProperty("user.dir") + "/task2/uploads";
 
     // ---------------- UPLOAD ----------------
     @Transactional
