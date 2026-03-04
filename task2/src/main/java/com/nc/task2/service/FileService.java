@@ -3,6 +3,9 @@ package com.nc.task2.service;
 import com.nc.task2.dto.FileResponse;
 import com.nc.task2.entity.FileEntity;
 import com.nc.task2.entity.User;
+import com.nc.task2.exception.FileAccessDeniedException;
+import com.nc.task2.exception.FileNotFoundException;
+import com.nc.task2.exception.FileTypeNotAllowedException;
 import com.nc.task2.repository.FileRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +35,7 @@ public class FileService {
         String originalName = file.getOriginalFilename();
 
         if (originalName == null || !originalName.matches(".*\\.(pdf|png|jpg)$")) {
-            throw new RuntimeException("Only PDF, PNG, JPG files are allowed.");
+            throw new FileTypeNotAllowedException("Only PDF, PNG, JPG files are allowed.");
         }
 
         Files.createDirectories(Paths.get(uploadDir));
@@ -74,10 +77,10 @@ public class FileService {
     public FileEntity getFileForDownload(Long id, User user) {
 
         FileEntity file = fileRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("File not found"));
+                .orElseThrow(() -> new FileNotFoundException("File not found"));
 
         if (!file.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Not allowed to access this file");
+            throw new FileAccessDeniedException("Not allowed to access this file");
         }
 
         return file;
@@ -88,10 +91,10 @@ public class FileService {
     public String deleteFile(Long id, User user) throws IOException {
 
         FileEntity file = fileRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("File not found"));
+                .orElseThrow(() -> new FileNotFoundException("File not found"));
 
         if (!file.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Not allowed to delete this file");
+            throw new FileAccessDeniedException("Not allowed to delete this file");
         }
 
         Files.deleteIfExists(Paths.get(file.getFilePath()));

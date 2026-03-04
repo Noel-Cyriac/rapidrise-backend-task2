@@ -12,6 +12,6 @@ public interface FileRepository extends JpaRepository<FileEntity, Long> {
     // Get all files uploaded by a specific user
     List<FileEntity> findByUser(User user);
 
-    // Find a file by id and user (to prevent accessing others' files)
+    // Find a file by id and user
     Optional<FileEntity> findByIdAndUser(Long id, User user);
 }

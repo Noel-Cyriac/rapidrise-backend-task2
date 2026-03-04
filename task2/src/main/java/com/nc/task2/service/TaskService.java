@@ -3,6 +3,8 @@ package com.nc.task2.service;
 import com.nc.task2.dto.TaskResponse;
 import com.nc.task2.entity.Task;
 import com.nc.task2.entity.User;
+import com.nc.task2.exception.TaskAccessDeniedException;
+import com.nc.task2.exception.TaskNotFoundException;
 import com.nc.task2.repository.TaskRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -36,14 +38,12 @@ public class TaskService {
     @Transactional
     public TaskResponse update(Long id, Task updated, User user) {
         Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
+                .orElseThrow(() -> new TaskNotFoundException("Task not found"));
 
-        // Ownership check
         if (!task.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("You cannot update this task");
+            throw new TaskAccessDeniedException("You cannot update this task");
         }
 
-        // Update only the fields that are non-null (optional)
         if (updated.getTitle() != null) task.setTitle(updated.getTitle());
         if (updated.getDescription() != null) task.setDescription(updated.getDescription());
         if (updated.getCompleted() != null) task.setCompleted(updated.getCompleted());
@@ -57,10 +57,10 @@ public class TaskService {
     public String delete(Long id, User user) {
 
         Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
+                .orElseThrow(() -> new TaskNotFoundException("Task not found"));
 
         if (!task.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("You cannot delete this task");
+            throw new TaskAccessDeniedException("You cannot delete this task");
         }
 
         taskRepository.delete(task);
